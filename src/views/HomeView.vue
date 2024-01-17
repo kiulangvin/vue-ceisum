@@ -1,11 +1,20 @@
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, reactive } from 'vue'
 import * as Cesium from 'cesium'
-import { addGridTileCoord, getCenterPosition, getMousePosition, getTileLayerLevel, getCurrentViewRectangle } from "@/common/utils.js"
+import {
+  addGridTileCoord, getCenterPosition,
+  getMousePosition, getTileLayerLevel, getCurrentViewRectangle,
+  modifyHomeButtonPosition
+} from "@/common/utils.js"
+
+import CesiumMeasure from "@/common/measure.js"
+import { HawkEye3DMap } from "@/common/eyeMap.js"
+
+let viewer = reactive({});
 
 //cesium初始化必须写在mounted生命周期里面，否则会报错"Element with id "cesiumContainer" does not exist in the document."
 onMounted(() => {
-  let viewer = new Cesium.Viewer('cesium-contanier', {
+  viewer = new Cesium.Viewer('cesium-contanier', {
     //这里是配置项
   })
   // 添加地形数据
@@ -47,12 +56,32 @@ onMounted(() => {
   getCurrentViewRectangle(viewer, rectangle => {
     console.log('当前地图视图范围为:', rectangle)
   })
+
+  // // 鹰眼地图初始化
+  let hawkEyeMap = new HawkEye3DMap(viewer);
+  hawkEyeMap._init();
+
+  // 修改homeButton的默认位置
+  modifyHomeButtonPosition(viewer, 114.26783201317139, 30.569111093990355, 5000)
 })
+
+const measureLen = () => {
+  // 测量工具
+  let measure = new CesiumMeasure({ viewer })
+  measure.measureLength({
+
+  })
+}
+
+
 
 </script>
 
 <template>
-  <div class="cesium-contanier" id="cesium-contanier"></div>
+  <div class="cesium-contanier" id="cesium-contanier">
+    <button @click="measureLen()">测量长度</button>
+    <!-- <div class="hawkEyeMap" id="hawkEyeMap"></div> -->
+  </div>
 </template>
 
 <style>
@@ -60,4 +89,16 @@ onMounted(() => {
   width: 100%;
   height: 100%;
 }
+
+/* .hawkEyeMap {
+  position: absolute;
+  left: 70%;
+  top: 2%;
+  border-radius: 50%;
+  height: 160px;
+  width: 160px;
+  overflow: hidden;
+  border: 2px solid #002FA7;
+  z-index: 999;
+} */
 </style>

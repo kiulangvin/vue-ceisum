@@ -80,4 +80,81 @@ export function getCurrentViewRectangle(viewer, callback) {
   })
 }
 
-// 绘制圆形
+// 坐标转换
+
+export const coordTransform = {
+  // wgs84(角度制)转笛卡尔
+  wgs84ToCartesian3: function (lng, lat, alt) {
+    return Cesium.Cartesian3.fromDegrees(lng, lat, alt)
+  },
+  // 笛卡尔转wgs84(角度制)
+  cartesian3ToWGS84: function (cartesian3) {
+    let cartographic = Cesium.Cartographic.fromCartesian(cartesian3)
+    return {
+      lng: Cesium.Math.toDegrees(cartographic.longitude),
+      lat: Cesium.Math.toDegrees(cartographic.latitude),
+      alt: cartographic.height
+    }
+  },
+  // 屏幕坐标 转 笛卡尔坐标
+  pxToCartesian3: function (px, viewer) {
+    if (px && viewer) {
+      let isOn3dtiles = false
+      let isOnTerrain = false
+      var cartesian = null
+      let picks = viewer.scene.drillPick(px)
+      if (picks.length > 0) {
+        for (let i = 0; i < picks.length; i++) {
+          let pick = picks[i]
+          if (pick && pick.primitive) {
+            if (
+              pick.primitive instanceof Cesium.Cesium3DTileFeature ||
+              pick.primitive instanceof Cesium.Cesium3DTileset ||
+              pick.primitive instanceof Cesium.Model
+            ) {
+              isOn3dtiles = true
+            }
+          }
+
+          // 3dtiles、模型、场景等
+          if (isOn3dtiles) {
+            // 屏幕转场景坐标，包含地形和模型等的场景坐标
+            cartesian = viewer.scene.pickPosition(px)
+            if (cartesian) {
+              cartesian.height = cartesian.height > 0 ? cartesian.height : 0
+            }
+          }
+        }
+      }
+      // 地表
+      let boolTerrain = viewer.terrainProvider instanceof Cesium.EllipsoidTerrainProvider
+      if (!isOn3dtiles && !boolTerrain) {
+        // 屏幕转地表坐标
+        let ray = viewer.camera.getPickRay(px)
+        let position = viewer.scene.globe.pick(ray, viewer.scene)
+        if (position) {
+          cartesian = position
+          isOnTerrain = true
+        }
+      }
+      // 椭球面
+      if (!isOn3dtiles && !isOnTerrain && boolTerrain) {
+        cartesian = viewer.scene.camera.pickEllipsoid(px, viewer.scene.globe.ellipsoid)
+      }
+      if (cartesian) {
+        return cartesian
+      }
+    }
+  }
+}
+
+// 修改homeButton的默认位置
+
+export function modifyHomeButtonPosition(viewer, lon, lat, height) {
+  viewer.homeButton.viewModel.command.beforeExecute.addEventListener(function (e) {
+    e.cancel = true
+    viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(lon, lat, height)
+    })
+  })
+}
